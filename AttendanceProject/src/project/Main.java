@@ -2,6 +2,7 @@ package project;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -15,11 +16,14 @@ import java.time.LocalDateTime;
 
 
 public class Main {
-
+	
 	public static void main(String[] args) {
+		Student student = new Student();
+		Teacher teacher = new Teacher();
+		Office office = new Office();
+		IDB db = new DB();
 		String login,pwd,userType=null, object="", status, dayToCheck, group;
 		boolean isLoginSuccess = false;
-		Connection con = null;
 		Scanner n = new Scanner(System.in);
 		java.util.Date date = new java.util.Date();
 		SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");  
@@ -27,177 +31,40 @@ public class Main {
 		String username="postgres";
 		String password="samsung";
 		Statement statement = null;
-		try {
-			con = DriverManager.getConnection("jdbc:postgresql://localhost:5432/EndTermProject", "postgres", "samsung");
-			statement = con.createStatement();
-			if (statement != null) {
-				System.out.println("Connected");
-			} else {
-				System.out.println("Not connected!");}
-			} catch (Exception e) {
-			e.printStackTrace();
-			}
+		Connection con = null;
+		con = db.connect(URL, username, password);
 		while (isLoginSuccess != true) {
 			System.out.print("Login: ");
 			login = n.nextLine();
 			System.out.print("Password: ");
 			pwd = n.nextLine();
-			//System.out.print("Choose User Type(student/teacher/office registrar): ");
-			//userType = n.nextLine();
 			try {
-				
+				statement = con.createStatement();
 				ResultSet result = statement.executeQuery("Select usertype FROM users WHERE login =\'" + login + "\' ");
 				if (result.next()) {
 					userType = result.getString("usertype");
 					}
-				
-				
-				
-				
-				
 				result = statement.executeQuery("Select id FROM users WHERE login =\'" + login + "\' AND"+ " password=\'" + pwd + "\' AND"+ " userType=\'" + userType + "\' ");
 				if (result.next()) {isLoginSuccess=true; System.out.println("Successfully logged in!");}
 				else {System.out.println("Data is incorrect. Try again!");continue;}
 			}catch (Exception e) {
-            System.out.println("Somethig is wrong");}  
+            System.out.println("Data is incorrect");continue;}  
 		
 			if (userType.equalsIgnoreCase("student")) {
-				String time = sdf.format(date);
-				String day = getLocalDate();
-				String dayofweek="";
-				Calendar c = Calendar.getInstance();
-				int d = c.get(Calendar.DAY_OF_WEEK)-1;
-				switch(d) {
-					case 1: 
-					   dayofweek = "Monday";
-					   break;
-					case 2: 
-						dayofweek = "Tuesday";break;
-		 			case 3: 
-		 				dayofweek = "Wednesday";break;
-	 				case 4: 
-	 					dayofweek = "Thursday";break;
-					case 5: 
-						dayofweek = "Friday";break;
-					case 6: 
-						dayofweek = "Saturday";break;
-					case 7: 
-						dayofweek = "Sunday";break;
-					
-				}
-					
-				System.out.print("What subject do you want to put attendance on?(java, calculus2, discrete): ");
-				object = n.nextLine();
-				System.out.print("Status(present, late, absent): ");
-				status = n.nextLine();
-				
-				
-				try {
-					ResultSet result = statement.executeQuery("Select id FROM users WHERE login =\'" + login + "\' ");
-					if (result.next()) {
-						int id = result.getInt("id");
-						//System.out.println(id);
-						statement.executeUpdate("insert into attendance(userid, subject, date, dayofweek, time, attendance) values (\'"+id+"\', \'"+ object + "\', \'"+day+"\', "+"\'"+dayofweek+"\', \'" + time + "\', \'"+status + "\')");
-						System.out.println("Attendance registered!");
-					}
-				}catch (Exception e) {
-	            System.out.println("Somethig is wrong");
-	            }
-			}
-			
+				Student.student(con, login);}
 			if (userType.equalsIgnoreCase("teacher")) {
-				System.out.println("Choose the group you want to check attendance: ");
-				group = n.nextLine();
-				System.out.println("Choose the date you want check attendance(YYYY-MM-DD)");
-				dayToCheck = n.nextLine();
-				try {
-					ResultSet result = statement.executeQuery("Select subject FROM users WHERE login =\'" + login + "\' ");
-					if (result.next()) {
-						object = result.getString("subject");
-						System.out.println("List of attendance of "+object+": ");
-					}
-					result = statement.executeQuery("Select * From users FULL join attendance On users.id = attendance.userid where users.studentgroup = \'"+group+"\' AND  date = \'"+dayToCheck+"\' order by users.id");
-					while (result.next())
-				      {
-						String idU = result.getString("userid");
-				        String nameU = result.getString("name");
-				        String surnameU = result.getString("surname");
-				        String groupU = result.getString("studentgroup");
-				        String dayU = result.getString("dayofweek");
-				        String timeU = result.getString("time");
-				        String attU = result.getString("attendance");
-				        String dateU = result.getString("date");
-				        String statusU = result.getString("attendance");
-				        // print the results
-				     
-				        System.out.format("%s, %s, %s, %s, %s, %s, %s, %s\n", idU, nameU, surnameU, groupU, dateU, dayU, timeU, attU, statusU);
-				      }
-					System.out.println("Do you want to change the attendance status?(Yes/No): ");
-					boolean repeat = true;
-					while(repeat) {
-					String ans = n.nextLine();
-					if (ans.equalsIgnoreCase("Yes")){
-						System.out.println("Choose the ID of student: ");
-						String change = n.nextLine();
-						System.out.println("Choose the status: ");
-						String newStatus = n.nextLine();
-						statement.executeUpdate("update attendance set attendance = \'"+newStatus+"\' where userid = "+change+";");
-						System.out.println("Updated! Do you want to change anything else?: ");
-					}
-					else
-					repeat = false;
-					}													
-					
-				}catch (Exception e) {
-		            System.out.println("Somethig is wrong");
-		          
-		        }
-			}
+				Teacher.teacher(con, n, login);}
 			if (userType.equalsIgnoreCase("office registrar")) {
-				System.out.println("Choose the subject:");
-				object = n.nextLine();
-				System.out.println("Choose the group: ");
-				group = n.nextLine();
-				System.out.println("Choose the date(YYYY-MM-DD)");
-				dayToCheck = n.nextLine();
-				try {
-					ResultSet result = statement.executeQuery("SELECT COUNT(attid) AS total FROM attendance WHERE attendance = 'present'; ");
-					System.out.print("present: ");
-					
-					if (result.next())
-				      {
-						int count;
-						count=result.getInt("total");
-						System.out.println(count);
-				      }
-					result = statement.executeQuery("SELECT COUNT(attid) AS total FROM attendance WHERE attendance = 'late'; ");
-					System.out.print("late: ");
-					
-					if (result.next())
-				      {
-						int count;
-						count=result.getInt("total");
-						System.out.println(count);
-				      }
-					result = statement.executeQuery("SELECT COUNT(attid) AS total FROM attendance WHERE attendance = 'absent'; ");
-					System.out.print("absent: ");
-					
-					if (result.next())
-				      {
-						int count;
-						count=result.getInt("total");
-						System.out.println(count);
-				      }
-					
-				
-			}catch (Exception e) {
-	            System.out.println("Somethig is wrong");
-		          
-	        }
+				Office.office(con, n, login);
 		}
 			
 		} 
-		
+			try {
+				con.close();
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 	}
 	
 	public static String getLocalDate() {
